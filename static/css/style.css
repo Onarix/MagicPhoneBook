@@ -1,0 +1,19 @@
+.form-control:focus{
+    color: inherit!important;
+    background-color: rgba(0,0,0,0)!important;
+    border-color: inherit   !important;
+    box-shadow: none!important;
+}
+
+.navbar{
+    background-color: rgba(0,0,0,0)!important;
+}
+
+td {
+    text-align: center;
+    padding-top:14px!important;
+}
+
+#delbtn {
+    padding-top:8px!important;
+}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="./css/style.css"/>
+</head>
+<body>
+<div class="container">
+    <nav class="navbar bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand">Wyszukaj</a>
+            <div class="d-flex justify-content-center flex-fill">
+                <input id="inputValue" class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                <button class="btn btn-outline-success" type="submit"
+                        onclick="searchUser(document.getElementById('inputValue').value)">Search
+                </button>
+
+            </div>
+        </div>
+    </nav>
+    <header>
+        <h1>Address Book</h1>
+        <hr/>
+    </header>
+    <table id='table1' class="table table-bordered">
+        <thead>
+        <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>Address</th>
+            <th>Phone</th>
+            <th>Mail</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+        <tbody id="contacts">
+        <% data.forEach(entry => { %>
+            <tr>
+                <td><%= entry.imie %></td>
+                <td><%= entry.nazwisko %></td>
+                <td><%= entry.adres %></td>
+                <td><%= entry.telefon %></td>
+                <td><%= entry.mail %></td>
+                <td id="delbtn">
+                    <div class="text-center">
+                        <button id='del{index}' class='btn btn-block' onclick="deleteUser(<%= entry.id %>)">Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        <% }) %>
+        </tbody>
+        <tfoot>
+        <tr>
+            <td>
+                <input id='firstName' class='form-control' type="text"/>
+            </td>
+            <td>
+                <input id='lastName' class='form-control' type="text"/>
+            </td>
+            <td>
+                <input id='address' class='form-control' type="text"/>
+            </td>
+            <td>
+                <input id='phone' class='form-control' type="text"/>
+            </td>
+            <td>
+                <input id='mail' class='form-control' type="text"/>
+            </td>
+            <td>
+                <div class="text-center">
+                    <button id='add' class='btn btn-block' onclick=addUser()>
+                        Add
+                    </button>
+                </div>
+            </td>
+        </tr>
+        </tfoot>
+    </table>
+</div>
+<script src="../script/script.js">
+
+</script>
+<script>
+    function searchUser(surname) {
+        fetch(`/users/${surname}`, {
+            method: 'GET',
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    console.error('Failed to delete user');
+                }
+            })
+            .then(result => {
+                document.getElementById("contacts").innerHTML = " ";
+                // Check if result has 'data' property
+                result.data.forEach(userData => {
+                    console.log('User data:', userData);
+                    // Handle the user data here, for example, call a function to insert the user
+                    insertUser(userData);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function deleteUser(userId) {
+        fetch(`/users/${userId}`, {
+            method: 'DELETE',
+        })
+            .then(response => {
+                if (response.ok) {
+                    console.log('User deleted successfully');
+                    location.reload(); // Reload the website
+                } else {
+                    console.error('Failed to delete user');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function addUser() {
+
+        const firstName = document.getElementById('firstName').value;
+        const lastName = document.getElementById('lastName').value;
+        const address = document.getElementById('address').value;
+        const phone = document.getElementById('phone').value;
+        const mail = document.getElementById('mail').value;
+
+        // Create a user object with the extracted data
+        const user = {
+            imie: firstName,
+            nazwisko: lastName,
+            adres: address,
+            telefon: phone,
+            mail: mail
+        };
+
+        console.log(user);
+
+        fetch('/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(user)
+        })
+            .then(response => {
+                if (response.ok) {
+                    console.log('User added successfully');
+                    // Optionally reload the website or update the UI
+                    location.reload(); // Reload the website
+                } else {
+                    console.error('Failed to add user');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+</script>
+</body>
+</html>
