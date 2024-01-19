@@ -23,25 +23,67 @@ app.get('/', (req, res) => {
     });
 });
 
-app.post('/users', (req, res) => {
-    const { imie, nazwisko, adres, telefon, mail } = req.body;
+const validateAndSanitizeInput = (input) => {
+    // Regular expression for validating phone numbers (simple example)
+    const phoneRegex = /^\d{10}$/;
 
-    // Validate required fields (you can add more validation as needed)
+    // Regular expression for validating email addresses
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const { imie, nazwisko, adres, telefon, mail } = input;
+
+    // Validate and sanitize each field
     if (!imie || !nazwisko || !adres || !telefon || !mail) {
-        return res.status(400).json({ message: 'All fields are required' });
+        throw new Error('All fields are required');
     }
 
-    const query = `INSERT INTO dane_osobowe (imie, nazwisko, adres, telefon, mail) VALUES ('${imie}', '${nazwisko}', '${adres}', '${telefon}', '${mail}')`;
+    if (typeof imie !== 'string' || typeof nazwisko !== 'string' || typeof adres !== 'string' ||
+        typeof telefon !== 'string' || typeof mail !== 'string') {
+        throw new Error('Invalid input types');
+    }
 
+    if (imie.length > 255 || nazwisko.length > 255 || adres.length > 255 || mail.length > 255) {
+        throw new Error('Input length exceeds maximum allowed');
+    }
 
-    executeQuery.executeQuery(query, (err) => {
-        if (err) {
-            console.error(err.message);
-            return res.status(500).json({ message: 'Error adding user to the database' });
-        }
+    if (!phoneRegex.test(telefon)) {
+        throw new Error('Invalid phone number');
+    }
 
-        res.status(201).json({ message: 'User added successfully' });
-    });
+    if (!emailRegex.test(mail)) {
+        throw new Error('Invalid email address');
+    }
+
+    // If all validations pass, return sanitized values
+    return {
+        imie: imie.trim(),
+        nazwisko: nazwisko.trim(),
+        adres: adres.trim(),
+        telefon: telefon.trim(),
+        mail: mail.trim(),
+    };
+};
+
+app.post('/users', (req, res) => {
+    try {
+        const sanitizedInput = validateAndSanitizeInput(req.body);
+
+        const query = `INSERT INTO dane_osobowe (imie, nazwisko, adres, telefon, mail) VALUES (
+            '${sanitizedInput.imie}', '${sanitizedInput.nazwisko}', '${sanitizedInput.adres}',
+            '${sanitizedInput.telefon}', '${sanitizedInput.mail}')`;
+
+        executeQuery.executeQuery(query, (err) => {
+            if (err) {
+                console.error(err.message);
+                return res.status(500).json({ message: 'Error adding user to the database' });
+            }
+
+            res.status(201).json({ message: 'User added successfully' });
+        });
+    } catch (error) {
+        console.error(error.message);
+        res.status(400).json({ message: error.message });
+    }
 });
 
 app.delete('/users/:id', (req, res) => {
@@ -56,19 +98,44 @@ app.delete('/users/:id', (req, res) => {
     });
 });
 
-app.get('/users/:nazwisko', (req, res) => {
-    const username = req.params.nazwisko;
+app.get('/users/search', (req, res) => {
+    const query = req.query.query.toLowerCase();
 
-    executeQuery.searchUser(username, (err, data) => {
-        if (err) {
-            res.status(500).json({ message: 'Error user' });
+    executeQuery.searchUser(query, (err, results) => {
+        if(err) {
+            console.error('Error while finding user: ', err);
+            res.status(500).json({ error: 'Internal Server Error' });
         } else {
-            return res.status(200).json({ message: 'User found successfully', data: data });
+            res.status(200).json(results);
         }
+    } )
+
+});
+
+app.post('/register', (req, res) => {
+    const { username, password } = req.body;
+
+    // Call the registerUser function from your separate file
+    executeQuery.registerUser(username, password, (err, message) => {
+        if (err) {
+            return res.status(500).json({ error: err });
+        }
+        res.json({ message });
     });
 });
 
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+
+    // Call the loginUser function from your separate file
+    executeQuery.loginUser(username, password, (err, message) => {
+        if (err) {
+            return res.status(401).json({ error: err });
+        }
+        res.json({ message });
+    });
+});
 
 app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(`MagicPhoneBook app listening on port ${port}`);
 });

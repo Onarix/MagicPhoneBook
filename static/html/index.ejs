@@ -9,7 +9,41 @@
 </head>
 
 <body>
-    <div class="container">
+    <div class="container" id="loginSection">
+        <h1>MagicPhoneBook</h1>
+        <hr />
+        <!-- Login/Register Form -->
+        <form id="loginForm">
+            <h3>Login</h3>
+
+            <label for="loginUsername">Username:</label>
+            <input type="text" id="loginUsername" name="username" required>
+            
+            <label for="loginPassword">Password:</label>
+            <input type="password" id="loginPassword" name="password" required>
+            
+            <button type="button" onclick="loginUser(document.getElementById('loginUsername').value, document.getElementById('loginPassword').value)" class="btn btn-primary">Login</button>
+        </form>
+        
+        <form id="registerForm">
+            <h3>Register</h3>
+
+            <label for="registerUsername">Username:</label>
+            <input type="text" id="registerUsername" name="username" required>
+
+            <label for="registerPassword">Password:</label>
+            <input type="password" id="registerPassword" name="password" required>
+
+            <br>
+
+            <label for="confirmPassword">Confirm Password: </label>
+            <input type="password" id="confirmPassword" name="confirm_password" required>
+            <button type="button" onclick="registerUser(document.getElementById('registerUsername').value, document.getElementById('registerPassword').value, document.getElementById('confirmPassword').value)" class="btn btn-primary">Register</button>
+        </form>
+    </div>
+
+    <!-- Main Site -->
+    <div class="container" id="contentSection" style="display: none;">
         <nav class="navbar bg-body-tertiary">
             <div class="container-fluid">
                 <a class="navbar-brand">Wyszukaj</a>
@@ -19,6 +53,7 @@
                     <button class="btn btn-outline-success" type="submit"
                         onclick="searchUser(document.getElementById('inputValue').value)">Search
                     </button>
+                    <button class="btn btn-outline-danger" onclick="searchUser('')">Clear</button>
 
                 </div>
             </div>
@@ -44,7 +79,7 @@
                     <td><%= entry.imie %></td>
                     <td><%= entry.nazwisko %></td>
                     <td><%= entry.adres %></td>
-                    <td><button class="phone-qr"><%= entry.telefon %></button></td>
+                    <td><button class="btn phone-qr" style="background-color:transparent"><%= entry.telefon %></button></td>
                     <td><%= entry.mail %></td>
                     <td id="delbtn">
                         <div class="text-center">
@@ -93,7 +128,6 @@
             </div>
 
         </div>
-
     </div>
     <script src="../script/qrcode.min.js"></script>
     <script>
@@ -131,39 +165,13 @@
             }
         }
 
-
-        function searchUser(surname) {
-            fetch(`/users/${surname}`, {
-                method: 'GET',
-            })
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        console.error('Failed to delete user');
-                    }
-                })
-                .then(result => {
-                    document.getElementById("contacts").innerHTML = " ";
-                    // Check if result has 'data' property
-                    result.data.forEach(userData => {
-                        console.log('User data:', userData);
-                        // Handle the user data here, for example, call a function to insert the user
-                        insertUser(userData);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-
         function deleteUser(userId) {
             fetch(`/users/${userId}`, {
                 method: 'DELETE',
             })
                 .then(response => {
                     if (response.ok) {
-                        location.reload(); // Reload the website
+                        searchUser('');
                         alert('User deleted successfully');
                     } else {
                         console.error('Failed to delete user');
@@ -204,7 +212,16 @@
                     if (response.ok) {
                         alert('User added successfully');
                         // Optionally reload the website or update the UI
-                        location.reload(); // Reload the website
+                        searchUser('');
+                    } else {
+                        console.error('Failed to add user');
+                    }
+                })
+                .then(data => {
+                    if (data.message) {
+                        alert(data.message); // Display an alert for the user
+                    } else if (data.error) {
+                        alert(`Error: ${data.error}`); // Display an alert for the user
                     } else {
                         console.error('Failed to add user');
                     }
@@ -212,6 +229,113 @@
                 .catch(error => {
                     console.error('Error:', error);
                 });
+        }
+
+
+        function searchUser(query) {
+            fetch(`/users/search?query=${query}`, {
+                method: 'GET',
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Clear the existing table rows
+                    const tableBody = document.getElementById('contacts');
+                    tableBody.innerHTML = '';
+
+                    // Check whether there are any findings in data
+                    if((Object.keys(data).length) == 0) {
+                        alert("No users found!");
+                    }
+
+                    // Populate the table with the search results
+                    data.forEach(entry => {
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>${entry.imie}</td>
+                            <td>${entry.nazwisko}</td>
+                            <td>${entry.adres}</td>
+                            <td><button class="btn phone-qr" style="background-color:transparent">${entry.telefon}</button></td>
+                            <td>${entry.mail}</td>
+                            <td>
+                                <div class="text-center">
+                                    <button id='del{index}' class='btn btn-block' onclick="deleteUser('${entry.id}')">Delete</button>
+                                </div>
+                            </td>
+                        `;
+                        tableBody.appendChild(newRow);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+
+        // Function to handle successful login
+        function handleLoginSuccess() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('contentSection').style.display = 'block';
+        }
+
+        function loginUser(userLogin, userPassword) {
+            if (!userLogin || !userPassword) {
+                alert('Please enter both username and password.');
+                return;
+            }
+            
+            // Make a POST request to the login endpoint
+            fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: userLogin, password: userPassword }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Login failed: ${data.error}`);
+                } else {
+                    alert(`Login successful: ${data.message}`);
+                    handleLoginSuccess();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function registerUser(userLogin, userPassword, confirmPassword) {
+
+            if (!userLogin || !userPassword) {
+                alert('Please enter both username and password.');
+                return;
+            }
+
+            if (userPassword != confirmPassword) {
+                alert('The provided passwords are different.');
+                return;
+            }
+
+            // Make a POST request to the register endpoint
+            fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username: userLogin, password: userPassword }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(`Registration failed: ${data.error}`);
+                } else {
+                    alert(`Registration successful: ${data.message}`);
+                    handleLoginSuccess();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>
